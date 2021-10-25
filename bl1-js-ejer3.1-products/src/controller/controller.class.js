@@ -17,6 +17,21 @@ class Controller {
         const total = this.store.totalImport().toFixed(2);	// dice al modelo que añada el producto
         if (newProd) {
             this.view.renderNewProduct(newProd);
+            const id = newProd.id;
+            const tr = document.getElementById("product"+id);
+            tr.querySelector('.delete').addEventListener('click', () => {
+                this.deleteProductFromStore(id)
+            })
+            tr.querySelector('.up').addEventListener('click', () => {
+                this.changeProductStock({ id:id,units:1 })
+            })
+            tr.querySelector('.down').addEventListener('click', () => {
+                this.changeProductStock({id:id, units:-1})
+            })
+            tr.querySelector('.edit').addEventListener('click', () => {
+                document.getElementById('new-prod').classList.remove("hide")
+                this.view.renderFillForm(newProd)
+            })
             this.view.renderStoreImport(total);
             		// si lo ha hecho le dice a la vista que lo pinte
         } else {
@@ -27,35 +42,49 @@ class Controller {
     }
 
     deleteProductFromStore(prodId) {
-        var find = this.store.findProduct(Number(prodId))
-        if (find) {
-            const cond1 = prompt('Esta seguro de que desea eliminarlo (s/n)');
-            if (cond1 == 's') {
-                if (find.units > 0) {
-                    const cond2 = prompt('Esta seguro de que desea eliminar las unidades del producto (s/n)');
-                        if (cond2 == 's') {
-                            this.store.delProduct(prodId);
-                            this.view.renderDelProduct;
+        try{ 
+            if (Number.isInteger(Number(prodId)) && Number(prodId) > 0){
+                const product =  this.store.findProduct(Number(prodId))
+                if(!product){
+                    throw `No existe el producto con id ${prodId}`
+                }
+                let respuesta = prompt(`Quieres borrar el producto con id ${prodId} ? [S/N]`) 
+                if(respuesta == 's' || respuesta == 'S'){
+                    if(product.units <= 0){
+                        this.store.delProduct(prodId)
+                        this.view.renderDelProduct(prodId)
+                    }else{
+                        respuesta = prompt(`El producto con id ${prodId} tiene ${product.units} units quieres borarlo igualmente ? [S/N]`) 
+                        if(respuesta == 's' || respuesta == 'S'){
+                            let units =  -product.units
+                            this.store.changeProductUnits({ id:product.id, units:units })
+                            this.store.delProduct(product.id)
+                            this.view.renderDelProduct(product.id)
+                            let total = this.store.totalImport()
+                            this.view.renderStoreImport(total)
                         }
-                } else {
-                    this.store.delProduct(prodId);
-                    this.view.renderDelProduct;
+                    }  
                 }
             }
+        }catch(Error){
+            this.view.renderErrorMessage(Error)
         }
-        
-        // No olvides pedir confirmación y, si el producto
-        // tiene unidades pedir una segunda confirmación
     }
 
     changeProductInStore(formData) {
+        const prod = this.store.changeProduct(formData)
+        const total = this.store.totalImport().toFixed(2);
+        if (prod) {
+            this.view.renderEditProduct(prod)
+            this.view.renderStoreImport(total);		// si lo ha hecho le dice a la vista que lo pinte
+        }
     }
 
     changeProductStock(formData) {
-        const newProd = this.store.changeProductUnits(formData);
-        const total = this.store.totalImport().toFixed(2);	// dice al modelo que añada el producto
+        const newProd = this.store.changeProductUnits(formData);	// dice al modelo que añada el producto
         if (newProd) {
             this.view.renderEditProduct(newProd);
+            const total = this.store.totalImport().toFixed(2);
             this.view.renderStoreImport(total);		// si lo ha hecho le dice a la vista que lo pinte
         } else {
             this.view.renderErrorMessage('error', 'Error al añadir el producto');
